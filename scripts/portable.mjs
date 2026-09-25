@@ -59,6 +59,8 @@ function parseArgs(argv) {
     if (arg === '--target') opts.target = argv[++i]
     else if (arg === '--formats') opts.formats = argv[++i].split(',').map((s) => s.trim()).filter(Boolean)
     else if (arg === '--no-clean') opts.clean = false
+    // `pnpm run portable -- --formats zip` 里的 `--` 也会被原样传进来，忽略即可
+    else if (arg === '--') continue
     else if (arg === '--help' || arg === '-h') {
       console.log(fs.readFileSync(fileURLToPath(import.meta.url), 'utf8').split('*/')[0])
       process.exit(0)
