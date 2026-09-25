@@ -109,7 +109,8 @@ rm -rf dist release          # Windows: rmdir /s /q dist release
 
 ### Portable Version
 
-Assemble an install-free portable build (unzip and run) and pack it as zip / 7z:
+Assemble an install-free portable build (unzip and run) and pack it as zip / 7z.
+See [BUILD.md](./BUILD.md) for the complete guide (prerequisites, step-by-step, troubleshooting).
 
 ```bash
 pnpm run portable

@@ -6,4 +6,5 @@
 
 - 下载：[Releases](https://github.com/James-ctrl-Doyle/clash-verge-rev-portable/releases)
 - 用法：解压即用，配置保存在程序同目录 `config/`
+- 自行构建：[BUILD.md](./BUILD.md)
 - 上游原始 README：[README.upstream.md](./README.upstream.md)
