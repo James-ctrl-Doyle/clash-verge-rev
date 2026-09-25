@@ -1151,7 +1151,6 @@ dependencies = [
  "tauri-plugin-shell",
  "tauri-plugin-updater",
  "tauri-plugin-wdio-webdriver",
- "tauri-plugin-window-state",
  "tokio",
  "tokio-rustls",
  "tokio-stream",
@@ -5735,8 +5734,6 @@ checksum = "eddd3ca559203180a307f12d114c268abf583f59b03cb906fd0b3ff8646c1147"
 dependencies = [
  "base64 0.22.1",
  "bytes",
- "cookie",
- "cookie_store",
  "encoding_rs",
  "futures-core",
  "h2",
@@ -7353,8 +7350,6 @@ version = "2.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d4c07d3be2c68e22e64012eb6c4ec969247e3800da26ef3f3856afbcd07a1ce6"
 dependencies = [
- "bytes",
- "cookie_store",
  "data-url",
  "http",
  "regex",
@@ -7532,21 +7527,6 @@ dependencies = [
  "webview2-com",
  "windows 0.61.3",
  "windows-core 0.61.2",
-]
-
-[[package]]
-name = "tauri-plugin-window-state"
-version = "2.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "73736611e14142408d15353e21e3cca2f12a3cfb523ad0ce85999b6d2ef1a704"
-dependencies = [
- "bitflags 2.13.2",
- "log",
- "serde",
- "serde_json",
- "tauri",
- "tauri-plugin",
- "thiserror 2.0.20",
 ]
 
 [[package]]

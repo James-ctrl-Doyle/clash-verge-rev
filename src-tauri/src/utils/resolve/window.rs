@@ -4,9 +4,7 @@ use tauri::webview::PageLoadEvent;
 use tauri::{Theme, WebviewWindow};
 
 use crate::{config::Config, core::handle, utils::resolve::window_script::build_window_initial_script};
-#[cfg(target_os = "macos")]
-use clash_verge_logging::logging;
-use clash_verge_logging::{Type, logging_error};
+use clash_verge_logging::{Type, logging, logging_error};
 
 const DARK_BACKGROUND_COLOR: Color = Color(46, 48, 61, 255); // #2E303D
 const LIGHT_BACKGROUND_COLOR: Color = Color(245, 245, 245, 255); // #F5F5F5
@@ -26,6 +24,21 @@ const DEFAULT_DECORATIONS: bool = true;
 
 const fn restored_window_size_is_too_small(width: u32, height: u32) -> bool {
     width < MINIMAL_WIDTH as u32 || height < MINIMAL_HEIGHT as u32
+}
+
+/// WebView2 的用户数据目录：放在 `app_home_dir()` 下，与其余配置一起跟随程序目录。
+///
+/// 创建失败时返回 `None`，调用方沿用 WebView2 的默认位置 —— 不因权限问题影响启动。
+fn webview_data_dir() -> Option<std::path::PathBuf> {
+    let dir = crate::utils::dirs::app_home_dir().ok()?.join("webview");
+
+    match std::fs::create_dir_all(&dir) {
+        Ok(()) => Some(dir),
+        Err(error) => {
+            logging!(warn, Type::Window, "创建 WebView 数据目录失败，沿用默认位置: {error}");
+            None
+        }
+    }
 }
 
 fn restore_default_size_if_needed(window: &WebviewWindow) {
@@ -105,9 +118,22 @@ pub async fn build_new_window() -> Result<WebviewWindow, String> {
 
     builder = builder.background_color(background_color);
 
+    // WebView2 默认把用户数据（Cookie、缓存、LocalStorage）写到
+    // `%LOCALAPPDATA%\<identifier>\EBWebView`，与程序位置无关 —— 这会让便携版
+    // 在系统盘留下十几 MB 数据，且换目录后登录态不跟随。
+    // 指定到 `app_home_dir()/webview`，使浏览器数据也随程序目录一起搬走。
+    if let Some(data_dir) = webview_data_dir() {
+        builder = builder.data_directory(data_dir);
+    }
+
     match builder.build() {
         Ok(window) => {
             logging_error!(Type::Window, window.set_background_color(Some(background_color)));
+
+            // 窗口状态在这里安装，而不是在 App 的 setup 阶段 —— 主窗口是延迟创建的
+            // （setup 时还不存在），在 setup 里找会拿不到。
+            crate::utils::window_state::install(&window);
+
             restore_default_size_if_needed(&window);
             // A new page supersedes any reload marker left by the old window.
             #[cfg(target_os = "macos")]
