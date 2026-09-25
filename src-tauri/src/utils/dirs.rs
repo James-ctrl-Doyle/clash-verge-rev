@@ -5,6 +5,7 @@ use clash_verge_logging::{Type, logging};
 use std::{
     fs,
     path::{Path, PathBuf},
+    sync::OnceLock,
 };
 use tauri::Manager as _;
 
@@ -24,8 +25,53 @@ pub static PROFILE_YAML: &str = "profiles.yaml";
 /// Marks that the one-shot raise of too-short auto-update intervals has already run.
 pub static UPDATE_INTERVAL_MIGRATED: &str = ".update-interval-migrated";
 
+/// Name of the portable configuration directory, located next to the executable.
+pub static PORTABLE_CONFIG_DIR: &str = "config";
+
+/// Cached result of [`resolve_portable_home_dir`].
+///
+/// Resolved lazily on first use: the answer depends on the filesystem and cannot change while the
+/// process lives, whereas `app_home_dir()` sits on hot paths that must not touch the disk.
+static PORTABLE_HOME_DIR: OnceLock<Option<PathBuf>> = OnceLock::new();
+
+/// Resolves `<directory of the executable>/config`, creating the directory when it is missing.
+///
+/// Returns `None` when that location cannot be created or written to, so the caller falls back to
+/// the system data directory. This keeps installed builds usable from locations where a standard
+/// user may not create files next to the executable, such as `Program Files`.
+fn resolve_portable_home_dir() -> Option<PathBuf> {
+    let dir = std::env::current_exe().ok()?.parent()?.join(PORTABLE_CONFIG_DIR);
+
+    // Idempotent when the directory already exists — which is also the "read existing config" path.
+    if let Err(error) = fs::create_dir_all(&dir) {
+        logging!(warn, Type::Setup, "便携配置目录不可用，改用系统数据目录: {error:#}");
+        return None;
+    }
+
+    // A directory may exist yet still reject new files (read-only media, locked-down ACL).
+    let probe = dir.join(".portable-write-probe");
+    match fs::File::create(&probe) {
+        Ok(_) => {
+            let _ = fs::remove_file(&probe);
+            Some(dir)
+        }
+        Err(error) => {
+            logging!(warn, Type::Setup, "便携配置目录不可写，改用系统数据目录: {error:#}");
+            None
+        }
+    }
+}
+
 /// Uses the same platform data resolver as Tauri, including before its handle exists.
+///
+/// Portable layout: all configuration lives in `config/` next to the executable, so the entire
+/// installation can be moved together with its settings. Missing files are created from templates
+/// by the normal initialization path, so an absent `config/` simply starts from defaults.
 pub fn app_home_dir() -> Result<PathBuf> {
+    if let Some(dir) = PORTABLE_HOME_DIR.get_or_init(resolve_portable_home_dir) {
+        return Ok(dir.clone());
+    }
+
     ::dirs::data_dir()
         .map(|root| root.join(APP_ID))
         .ok_or_else(|| anyhow::anyhow!("Failed to get the app home directory"))
