@@ -1,4 +1,4 @@
-# Clash Verge Rev · Windows x64 Portable
+# Clash Verge Rev - Windows x64 Portable
 
 > **上游原版仓库 → <https://github.com/clash-verge-rev/clash-verge-rev>**
 
