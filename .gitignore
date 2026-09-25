@@ -13,6 +13,7 @@ scripts/_env.sh
 .eslintcache
 .changelog_backups
 target
+/release/
 .vfox.toml
 .vfox
 .claude

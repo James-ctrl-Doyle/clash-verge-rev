@@ -103,14 +103,32 @@ pnpm build:fast
 ### Clean Build
 
 ```bash
-pnpm clean
+cargo clean
+rm -rf dist release          # Windows: rmdir /s /q dist release
 ```
 
-### Portable Version (Windows Only)
+### Portable Version
+
+Assemble an install-free portable build (unzip and run) and pack it as zip / 7z:
 
 ```bash
-pnpm portable
+pnpm run portable
 ```
+
+It collects the main binary, the sidecars (mihomo cores) and `resources/` from
+`target/<triple>/release/`, which the build step has already populated, then writes
+the packages to `release/`. A release build must exist first (`pnpm build`).
+
+Useful flags:
+
+```bash
+pnpm run portable -- --formats zip        # zip only
+pnpm run portable -- --target aarch64-pc-windows-msvc
+```
+
+The archives have no extra top-level directory — extracting them puts the
+executables directly in place. Configuration lives in `config/` next to the
+executable and is created on first run.
 
 ## Contributing Your Changes
 
