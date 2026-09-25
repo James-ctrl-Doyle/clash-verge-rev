@@ -116,8 +116,18 @@ pnpm run portable
 ```
 
 It collects the main binary, the sidecars (mihomo cores) and `resources/` from
-`target/<triple>/release/`, which the build step has already populated, then writes
-the packages to `release/`. A release build must exist first (`pnpm build`).
+`target/<triple>/release/` and writes the packages to `release/`.
+
+A build must exist first. Running the full `pnpm build` is **not** required — the Tauri
+build script already places the sidecars and `resources/` next to the binary during the
+Rust build, so this shorter path is enough:
+
+```bash
+pnpm run prebuild                        # external deps (cores, geo data, service binaries)
+pnpm run web:build                       # frontend -> dist/
+cargo build --release --target <triple>  # backend; also drops sidecars/resources into target/
+pnpm run portable
+```
 
 Useful flags:
 
