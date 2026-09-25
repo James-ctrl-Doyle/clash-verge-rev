@@ -147,10 +147,11 @@ function main() {
   if (!fs.existsSync(mainBinary)) {
     fail(
       `未找到主程序 ${path.relative(ROOT, mainBinary)}\n` +
-        '       请先完成 release 构建：\n' +
+        '       请先完成一次 release 构建：\n' +
         '         pnpm run prebuild   # 下载 mihomo 内核 / 规则库 / 服务等外部依赖\n' +
-        '         pnpm build          # 或：cargo build --release --target ' +
-        triple,
+        '         pnpm build          # 完整构建（内含前端 web:build）\n' +
+        '       若前端已构建过、只想编后端，可用：\n' +
+        `         cargo build --release --target ${triple}`,
     )
   }
 
