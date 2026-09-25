@@ -30,6 +30,17 @@ identifier = "io.github.clash-verge-rev.clash-verge-rev"
 
 [build-dependencies]
 tauri-build = { version = "2.6.3", features = [] }
+# ── indexmap std 特性强制开启（修复 schemars 0.8.22 的 E0107）─────────────────
+# schemars 0.8.22 经 tauri-build 引入，是 **build-dependency**（host 编译，产物落在
+# target/<profile>/deps，而非 target/<triple>/<profile>/deps）。
+# 它的 `pub type Map<K, V> = indexmap::IndexMap<K, V>;` 只传 2 个泛型参数，依赖
+# indexmap 1.9 的默认参数 `S = RandomState`，而该默认参数位于 `#[cfg(has_std)]` 内。
+# indexmap 1.9.3 的 build.rs：CARGO_FEATURE_STD 存在 → emit("has_std")，
+# 否则靠 autocfg 探测 —— 本机环境下探测结果为 false（build/indexmap-*/output 里
+# 只有 rustc-check-cfg，没有 rustc-cfg=has_std），IndexMap 退化成三参数定义。
+# ⚠ 关键：Cargo 对 host（build-dep）与 target 依赖的特性表是**独立**解析的，
+#   只在 [dependencies] 里声明 std 无法影响 host 侧这个实例，必须在此处声明。
+indexmap = { workspace = true, features = ["std"] }
 
 [dependencies]
 clash-verge-draft = { workspace = true }

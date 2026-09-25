@@ -95,6 +95,18 @@ serde_yaml_ng = { version = "0.10.0" }
 bitflags = { version = "2.13.2" }
 socket2 = "0.6.5"
 
+# ── indexmap 1.9 的 std 特性必须显式打开（修复 schemars 0.8.22 的 E0107）───────
+# schemars 0.8.22 有 `pub type Map<K, V> = indexmap::IndexMap<K, V>;`，只传 2 个泛型参数，
+# 依赖 indexmap 1.9 的默认参数 `S = RandomState`；而该默认参数位于 `#[cfg(has_std)]` 内。
+# indexmap 1.9.3 的 build.rs 决定 has_std：
+#     CARGO_FEATURE_STD 存在 → autocfg::emit("has_std")（确定性）
+#     否则                   → autocfg 运行时探测 sysroot（本机判为 false）
+# 探测为 false 时 IndexMap 退化成 map.rs:76 的三参数无默认值定义，schemars 即报 E0107。
+# 这里提供带 std 的依赖定义，供 src-tauri 的 [build-dependencies] 引用
+# （⚠ Cargo 对 host/build-dep 与 target 依赖的特性表是独立解析的，
+#   只在 [dependencies] 里声明 std 影响不到 host 侧编译的 schemars，必须声明在 build-deps）。
+indexmap = { version = "1.9.3", features = ["std"] }
+
 # *** For Windows platform only ***
 deelevate = "0.2.0"
 windows-sys = { version = "0.61.2", features = [

@@ -1,12 +1,15 @@
 enablePrePostScripts: false
+nodeLinker: hoisted
+verifyDepsBeforeRun: false
+ignoreScripts: true
 allowBuilds:
-  "@parcel/watcher": true
-  core-js: true
+  "@parcel/watcher": false
+  core-js: false
   edgedriver: false
-  es5-ext: true
-  esbuild: true
+  es5-ext: false
+  esbuild: false
   geckodriver: false
-  meta-json-schema: true
-  unrs-resolver: true
+  meta-json-schema: false
+  unrs-resolver: false
 minimumReleaseAgeExclude:
   - dayjs@1.11.21
