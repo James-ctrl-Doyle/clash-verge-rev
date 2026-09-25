@@ -64,11 +64,10 @@ pnpm run portable
 
 相比上游，本仓库多了两处改动 —— 这也是"为什么不能直接用上游的方式构建出便携版"的原因。
 
-**1. 配置目录便携化**（`src-tauri/src/utils/dirs.rs`）
+**1. 配置目录便携化**（四处改动，细节见上一节）
 
-上游把配置固定在 `%APPDATA%\<APP_ID>`，程序放到哪里都往系统盘写。本仓库改为优先使用
-**可执行文件同目录的 `config/`**，使整个程序目录可以整体搬走；该位置不可写时
-（例如装在 `Program Files`）自动回退到系统数据目录。
+上游把配置、窗口状态、WebView2 数据、cookie 分散写在 `%APPDATA%` 与 `%LOCALAPPDATA%` 下，
+且后三者无法通过配置重定向。本仓库全部改到程序同目录的 `config/` 下。
 
 **2. 便携版组装脚本**（`scripts/portable.mjs` + `pnpm portable`）
 
@@ -88,8 +87,33 @@ pnpm run portable -- --no-clean                           # 保留已有输出�
 
 ## 配置文件放在哪
 
-构建出的便携版把配置放在**程序同目录的 `config/`**（上游原生是 `%APPDATA%\<APP_ID>`）。
-该目录不存在会自动创建；配置文件缺失时用模板生成默认值。所以整个目录可以整体搬走。
+构建出的便携版把**全部**状态都放在程序同目录的 `config/` 下，**不写系统盘**：
+
+| 内容 | 位置 |
+|---|---|
+| 配置与订阅 | `config/`（`verge.yaml`、`profiles.yaml`、`profiles/` …） |
+| 运行日志 | `config/logs/` |
+| 窗口位置与大小 | `config/window_state.json` |
+| 浏览器数据（Cookie、缓存） | `config/webview/EBWebView/` |
+
+因此整个程序目录可以整体搬走，换机器、换盘符都不会丢配置；删掉目录也不会有残留。
+
+### 为此做的四处改动
+
+上游原生把这些内容分散在 `%APPDATA%\<APP_ID>`、`%LOCALAPPDATA%\<APP_ID>` 与
+`%LOCALAPPDATA%\<APP_ID>\EBWebView`，而且其中三处**都绕过了配置目录解析、也无法通过配置重定向**
+（Tauri 内部直接调 `dirs::config_dir()` / `dirs::cache_dir()`，不读环境变量）：
+
+1. **`utils/dirs.rs` 的 `app_home_dir()`** —— 配置根目录指向程序同目录的 `config/`
+2. **自实现窗口状态持久化**（`utils/window_state.rs`）—— 取代 `tauri-plugin-window-state`
+   （它固定写向 Tauri 的 `app_config_dir()`）。文件格式与该插件一致，旧文件可直接沿用
+3. **给主窗口指定 `data_directory`**（`utils/resolve/window.rs`）——
+   把 WebView2 用户数据目录移进 `config/webview`
+4. **关闭 `tauri-plugin-http` 的 `cookies` feature** —— 它固定把 cookie 存到
+   `app_cache_dir()`（即 `%LOCALAPPDATA%\<APP_ID>\.cookies`），同样没有配置入口
+
+> 第 4 项的代价：HTTP 层不再持久化 cookie。前端没有直接使用 cookie，
+> 影响面仅限于少数依赖登录态的订阅站点可能需要重新登录。
 
 ## 故障排查
 
