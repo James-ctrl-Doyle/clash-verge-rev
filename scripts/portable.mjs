@@ -25,9 +25,9 @@
  *   <ProductName>_<version>_Portable.7z   （需系统安装 7-Zip）
  */
 
-import AdmZip from 'adm-zip'
 import { spawnSync } from 'node:child_process'
 import fs from 'node:fs'
+import { createRequire } from 'node:module'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
@@ -83,6 +83,19 @@ function copyRecursive(src, dst) {
   } else {
     fs.mkdirSync(path.dirname(dst), { recursive: true })
     fs.copyFileSync(src, dst)
+  }
+}
+
+/**
+ * 懒加载 adm-zip：只有真要打 zip 时才需要它。
+ * 放在顶层 import 的话，未安装依赖时会直接抛 ERR_MODULE_NOT_FOUND
+ * 并连带埋掉更常见的"尚未构建"提示。
+ */
+function requireAdmZip() {
+  try {
+    return createRequire(import.meta.url)('adm-zip')
+  } catch {
+    fail('缺少依赖 adm-zip，请先运行 pnpm install')
   }
 }
 
@@ -200,6 +213,7 @@ function main() {
   console.log('\n压缩包')
 
   if (formats.includes('zip')) {
+    const AdmZip = requireAdmZip()
     const zipPath = path.join(outRoot, `${baseName}.zip`)
     const zip = new AdmZip()
     addFolderFlat(zip, packDir)
