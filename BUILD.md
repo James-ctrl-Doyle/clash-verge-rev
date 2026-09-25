@@ -60,6 +60,24 @@ pnpm build
 pnpm run portable
 ```
 
+## 与上游的差异
+
+相比上游，本仓库多了两处改动 —— 这也是"为什么不能直接用上游的方式构建出便携版"的原因。
+
+**1. 配置目录便携化**（`src-tauri/src/utils/dirs.rs`）
+
+上游把配置固定在 `%APPDATA%\<APP_ID>`，程序放到哪里都往系统盘写。本仓库改为优先使用
+**可执行文件同目录的 `config/`**，使整个程序目录可以整体搬走；该位置不可写时
+（例如装在 `Program Files`）自动回退到系统数据目录。
+
+**2. 便携版组装脚本**（`scripts/portable.mjs` + `pnpm portable`）
+
+上游的 `CONTRIBUTING.md` 里写有 "Portable Version" 一节和 `pnpm portable` 命令，但
+**实现并不存在** —— `package.json` 中没有该脚本，也没有任何打包脚本，CI 与 Release
+资产里都不含免安装包。本仓库把它补齐了。上游的 `pnpm clean` 同样是"文档里有、实现没有"。
+
+> 也就是说：即使只想要一个"把构建产物压成压缩包"的步骤，上游也没有现成的可以用。
+
 ## 选项
 
 ```bash
