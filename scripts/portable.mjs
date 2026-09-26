@@ -22,8 +22,8 @@
  *
  * 产物（默认输出到 <repo>/_build/release/）：
  *   <ProductName>/                     解压即用的目录（压缩包内不含这一层）
- *   <ProductName>_<version>_Portable.zip
- *   <ProductName>_<version>_Portable.7z   （需系统安装 7-Zip）
+ *   <ProductName>_<version>_Portable.zip      zip 也优先用 7-Zip 压（比内置压缩器小约 7%）
+ *   <ProductName>_<version>_Portable.7z       需系统安装 7-Zip，体积约小一半
  *
  * 开工第一件事是删掉输出目录里的 <ProductName>/config/ —— 那是程序运行时生成的
  * 本机配置与缓存，绝不能被打进发布包。
@@ -143,6 +143,29 @@ function addFolderFlat(zip, baseDir) {
   walk('')
 }
 
+/**
+ * 打 zip。优先用 7-Zip（`-mx=9` 比 adm-zip 小约 7%），找不到才退回 adm-zip。
+ * 返回实际使用的压缩器名，供输出里标注 —— 免得体积差异看起来莫名其妙。
+ */
+function writeZip(outPath, packDir) {
+  const sevenZip = find7z()
+  if (sevenZip) {
+    // `*` 交给 7z 自行展开；在 packDir 内执行以保证包内不含顶层目录
+    const result = spawnSync(sevenZip, ['a', '-tzip', '-mx=9', outPath, '*'], {
+      cwd: packDir,
+      stdio: 'ignore',
+    })
+    if (result.status !== 0) fail(`zip 打包失败（退出码 ${result.status}）`)
+    return '7-Zip -mx=9'
+  }
+
+  const AdmZip = requireAdmZip()
+  const zip = new AdmZip()
+  addFolderFlat(zip, packDir)
+  zip.writeZip(outPath)
+  return 'adm-zip（未找到 7-Zip，体积会略大）'
+}
+
 function main() {
   const opts = parseArgs(process.argv.slice(2))
 
@@ -232,12 +255,11 @@ function main() {
   console.log('\n压缩包')
 
   if (formats.includes('zip')) {
-    const AdmZip = requireAdmZip()
     const zipPath = path.join(outRoot, `${baseName}.zip`)
-    const zip = new AdmZip()
-    addFolderFlat(zip, packDir)
-    zip.writeZip(zipPath)
-    console.log(`  zip -> ${path.relative(ROOT, zipPath)}  ${humanSize(fs.statSync(zipPath).size)}`)
+    const via = writeZip(zipPath, packDir)
+    console.log(
+      `  zip -> ${path.relative(ROOT, zipPath)}  ${humanSize(fs.statSync(zipPath).size)}  [${via}]`,
+    )
   }
 
   if (formats.includes('7z')) {

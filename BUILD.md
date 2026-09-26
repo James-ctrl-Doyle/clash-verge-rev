@@ -13,7 +13,7 @@ Windows x64 便携版。这里说明如何自己从源码构建出同样的产�
 | Node.js | 20+，并启用 pnpm：`corepack enable` |
 | MSVC 生成工具 | Visual Studio Build Tools，含 C++ 工具集 |
 | GNU `patch` | Windows 上必需（Git for Windows / MSYS2 自带） |
-| 7-Zip | 打包 7z 需要（默认两种格式都产出）。只打 zip 时可省 |
+| 7-Zip | 打包 7z 需要（默认两种格式都产出）。只打 zip 时可省，但装上能让 zip 小约 7% |
 
 具体版本要求见仓库根的 `.tool-versions`。
 
@@ -37,6 +37,7 @@ Clash.Verge_<version>_Portable.7z       需系统装有 7-Zip，体积约小一�
 
 压缩包内不含多余的顶层目录，解压出来直接就是可执行文件。**两种格式都会产出**；
 缺少 7-Zip 时脚本会直接报错（只打 zip 请用 `--formats zip`）。
+zip 也优先交给 7-Zip 压缩（`-mx=9`），未装时退回内置压缩器、体积约大 7%。
 
 > 每次打包**开工第一件事**是删掉输出目录里的 `Clash Verge/config/` —— 那是运行程序时
 > 生成的本机配置、日志与浏览器缓存，留着会被一并打进发布包。
