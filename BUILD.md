@@ -13,6 +13,7 @@ Windows x64 便携版。这里说明如何自己从源码构建出同样的产�
 | Node.js | 20+，并启用 pnpm：`corepack enable` |
 | MSVC 生成工具 | Visual Studio Build Tools，含 C++ 工具集 |
 | GNU `patch` | Windows 上必需（Git for Windows / MSYS2 自带） |
+| 7-Zip | 打包 7z 需要（默认两种格式都产出）。只打 zip 时可省 |
 
 具体版本要求见仓库根的 `.tool-versions`。
 
@@ -23,10 +24,10 @@ pnpm install
 pnpm run prebuild      # 下载 mihomo 内核、GeoIP/GeoSite、服务端程序
 pnpm run web:build     # 构建前端 → dist/
 cargo build --release --target x86_64-pc-windows-msvc
-pnpm run portable      # 组装便携版并打包 → release/
+pnpm run portable      # 组装便携版并打包 → _build/release/
 ```
 
-产物都在 `release/`：
+产物都在 `_build/release/`：
 
 ```
 Clash Verge/                            解压即用的目录
@@ -34,7 +35,11 @@ Clash.Verge_<version>_Portable.zip      通用格式
 Clash.Verge_<version>_Portable.7z       需系统装有 7-Zip，体积约小一半
 ```
 
-压缩包内不含多余的顶层目录，解压出来直接就是可执行文件。
+压缩包内不含多余的顶层目录，解压出来直接就是可执行文件。**两种格式都会产出**；
+缺少 7-Zip 时脚本会直接报错（只打 zip 请用 `--formats zip`）。
+
+> 每次打包**开工第一件事**是删掉输出目录里的 `Clash Verge/config/` —— 那是运行程序时
+> 生成的本机配置、日志与浏览器缓存，留着会被一并打进发布包。
 
 ## 各步骤在做什么
 
@@ -80,9 +85,10 @@ pnpm run portable
 ## 选项
 
 ```bash
-pnpm run portable -- --formats zip                        # 只打 zip
+pnpm run portable -- --formats zip                        # 只打 zip（不需要 7-Zip）
 pnpm run portable -- --target aarch64-pc-windows-msvc     # 指定目标三元组
-pnpm run portable -- --no-clean                           # 保留已有输出目录
+pnpm run portable -- --out dist-portable                  # 换输出目录（默认 _build/release）
+pnpm run portable -- --no-clean                           # 保留已有输出目录（config/ 仍会先删掉）
 ```
 
 ## 配置文件放在哪

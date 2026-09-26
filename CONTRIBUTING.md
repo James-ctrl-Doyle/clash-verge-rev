@@ -104,7 +104,7 @@ pnpm build:fast
 
 ```bash
 cargo clean
-rm -rf dist release          # Windows: rmdir /s /q dist release
+rm -rf dist _build/release   # Windows: rmdir /s /q dist _build\release
 ```
 
 ### Portable Version
@@ -117,7 +117,10 @@ pnpm run portable
 ```
 
 It collects the main binary, the sidecars (mihomo cores) and `resources/` from
-`target/<triple>/release/` and writes the packages to `release/`.
+`target/<triple>/release/` and writes the packages to `_build/release/`.
+Both `zip` and `7z` are produced by default, so 7-Zip must be installed
+(use `--formats zip` to skip it). Any stale `config/` left by a previous run is
+removed before packing, so local settings never end up in the published archive.
 
 A build must exist first. Running the full `pnpm build` is **not** required — the Tauri
 build script already places the sidecars and `resources/` next to the binary during the

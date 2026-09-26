@@ -14,6 +14,7 @@ scripts/_env.sh
 .changelog_backups
 target
 /release/
+/_build/
 .vfox.toml
 .vfox
 .claude

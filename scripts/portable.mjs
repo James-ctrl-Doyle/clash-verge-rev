@@ -11,7 +11,8 @@
  *
  * 选项：
  *   --target <triple>    指定目标三元组（默认按当前平台/架构推断）
- *   --formats zip,7z     要产出的压缩格式（默认 zip，若检测到 7-Zip 则再加 7z）
+ *   --out <dir>          输出目录（默认 _build/release）
+ *   --formats zip,7z     要产出的压缩格式（默认两者都产出）
  *   --no-clean           保留已存在的输出目录（默认先清空）
  *
  * 前置条件：先完成一次 release 构建，即
@@ -19,10 +20,13 @@
  * 或仅后端：
  *   cargo build --release --target <triple>
  *
- * 产物（默认输出到 <repo>/release/）：
+ * 产物（默认输出到 <repo>/_build/release/）：
  *   <ProductName>/                     解压即用的目录（压缩包内不含这一层）
  *   <ProductName>_<version>_Portable.zip
  *   <ProductName>_<version>_Portable.7z   （需系统安装 7-Zip）
+ *
+ * 开工第一件事是删掉输出目录里的 <ProductName>/config/ —— 那是程序运行时生成的
+ * 本机配置与缓存，绝不能被打进发布包。
  */
 
 import { spawnSync } from 'node:child_process'
@@ -53,10 +57,11 @@ function fail(message) {
 }
 
 function parseArgs(argv) {
-  const opts = { target: null, formats: null, clean: true }
+  const opts = { target: null, out: null, formats: null, clean: true }
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i]
     if (arg === '--target') opts.target = argv[++i]
+    else if (arg === '--out') opts.out = argv[++i]
     else if (arg === '--formats') opts.formats = argv[++i].split(',').map((s) => s.trim()).filter(Boolean)
     else if (arg === '--no-clean') opts.clean = false
     // `pnpm run portable -- --formats zip` 里的 `--` 也会被原样传进来，忽略即可
@@ -154,10 +159,23 @@ function main() {
   const releaseDir = path.join(ROOT, 'target', triple, 'release')
   const mainBinary = path.join(releaseDir, binName + EXE)
 
+  const outRoot = opts.out ? path.resolve(ROOT, opts.out) : path.join(ROOT, '_build', 'release')
+  const packDir = path.join(outRoot, productName)
+
+  // 开工第一件事：删掉上次运行程序留下的 config/。
+  // 里面是本机配置、日志与 WebView2 缓存 —— 一旦被打进发布包，既是泄露也是白白膨胀。
+  const staleConfig = path.join(packDir, 'config')
+  const removedConfig = fs.existsSync(staleConfig)
+  if (removedConfig) fs.rmSync(staleConfig, { recursive: true, force: true })
+
   console.log('便携版组装')
   console.log(`  版本      : ${version}`)
   console.log(`  目标      : ${triple}`)
   console.log(`  构建产物  : ${path.relative(ROOT, releaseDir)}`)
+  console.log(`  输出      : ${path.relative(ROOT, outRoot)}`)
+  if (removedConfig) {
+    console.log(`  清理      : 已删除遗留的 ${path.relative(ROOT, staleConfig)}`)
+  }
 
   if (!fs.existsSync(mainBinary)) {
     fail(
@@ -188,9 +206,7 @@ function main() {
     console.warn('  警告：release 目录下没有 resources/，产物可能缺少规则库与服务程序')
   }
 
-  // 组装输出目录
-  const outRoot = path.join(ROOT, 'release')
-  const packDir = path.join(outRoot, productName)
+  // 组装输出目录（config/ 已在开工时清掉）
   if (opts.clean && fs.existsSync(packDir)) fs.rmSync(packDir, { recursive: true, force: true })
   fs.mkdirSync(packDir, { recursive: true })
 
@@ -209,7 +225,8 @@ function main() {
   }
 
   // 打包
-  const formats = opts.formats ?? (find7z() ? ['zip', '7z'] : ['zip'])
+  // 默认两种都产出；只想要一种时用 --formats 指定
+  const formats = opts.formats ?? ['zip', '7z']
   const baseName = `${productName.replace(/\s+/g, '.')}_${version}_Portable`
 
   console.log('\n压缩包')
@@ -226,7 +243,10 @@ function main() {
   if (formats.includes('7z')) {
     const sevenZip = find7z()
     if (!sevenZip) {
-      console.warn('  7z  -> 未找到 7-Zip，已跳过（安装 7-Zip 后重跑，或用 --formats zip）')
+      fail(
+        '未找到 7-Zip，无法产出 7z 包\n' +
+          '       安装 7-Zip（https://www.7-zip.org/）后重跑，或只打 zip：--formats zip',
+      )
     } else {
       const zip7Path = path.join(outRoot, `${baseName}.7z`)
       // `*` 交给 7z 自行展开；在 packDir 内执行以保证压缩包内不含顶层目录
